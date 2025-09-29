@@ -28,20 +28,39 @@ export async function action({ request }: ActionFunctionArgs) {
 
     console.log(`[N8N Webhook] Calling: ${workflowType}`);
     console.log(`[N8N Webhook] URL: ${webhookUrl}`);
+    console.log(`[N8N Webhook] VIN: ${vin}`);
     console.log(`[N8N Webhook] Data:`, JSON.stringify(data));
 
     const response = await fetch(webhookUrl, {
       method: "GET", // Webhook 通常使用 GET，VIN 在 URL 中
       headers: {
         "Accept": "application/json",
+        "User-Agent": "AIM-Factsheet-App/1.0",
       },
     });
 
+    console.log(`[N8N Webhook] Response status: ${response.status}`);
+    console.log(`[N8N Webhook] Response headers:`, JSON.stringify(Object.fromEntries(response.headers.entries())));
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[N8N Webhook] Error:", errorText);
+      console.error("[N8N Webhook] Error response:", errorText);
+      console.error("[N8N Webhook] Full error details:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: webhookUrl,
+        responseBody: errorText
+      });
       return json(
-        { success: false, error: `HTTP ${response.status}`, details: errorText },
+        {
+          success: false,
+          error: `HTTP ${response.status}: ${response.statusText}`,
+          details: errorText || 'No error details provided',
+          debugInfo: {
+            url: webhookUrl,
+            status: response.status
+          }
+        },
         { status: response.status }
       );
     }
