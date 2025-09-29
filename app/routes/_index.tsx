@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { generateFactsheet } from '../lib/n8n-client';
 import type { MetaFunction } from '@remix-run/node';
 
@@ -15,6 +15,54 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
   const [vin, setVin] = useState('');
   const [showDebug, setShowDebug] = useState(false);
+  const [countdown, setCountdown] = useState(30);
+  const [progress, setProgress] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
+  // 启动倒计时
+  const startCountdown = () => {
+    setCountdown(30);
+    setProgress(0);
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        const next = prev - 1;
+        if (next <= 0) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return next;
+      });
+
+      setProgress((prev) => {
+        const nextProgress = prev + (100 / 30);
+        return Math.min(nextProgress, 100);
+      });
+    }, 1000);
+  };
+
+  // 停止倒计时
+  const stopCountdown = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setCountdown(30);
+    setProgress(0);
+  };
 
   const testConnection = async () => {
     setLoading(true);
@@ -34,6 +82,8 @@ export default function Index() {
   const executeWorkflow = async () => {
     setLoading(true);
     setExecResult(null);
+    startCountdown();
+
     try {
       const result = await generateFactsheet(vin);
       setExecResult(result);
@@ -42,8 +92,10 @@ export default function Index() {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
+    } finally {
+      setLoading(false);
+      stopCountdown();
     }
-    setLoading(false);
   };
 
   const copyToClipboard = async (data: any) => {
@@ -106,6 +158,57 @@ export default function Index() {
             {loading ? '⏳ Processing...' : '🚀 Generate'}
           </button>
         </div>
+
+        {/* Progress Bar - 倒计时进度条 */}
+        {loading && (
+          <div style={{
+            marginTop: '20px',
+            padding: '16px',
+            background: '#F9FAFB',
+            borderRadius: '8px',
+            border: '1px solid #E5E7EB'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '8px'
+            }}>
+              <span style={{ fontSize: '14px', color: '#6B7280', fontWeight: '500' }}>
+                🔄 Generating factsheet...
+              </span>
+              <span style={{ fontSize: '14px', color: '#3B82F6', fontWeight: '600' }}>
+                {countdown}s
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div style={{
+              width: '100%',
+              height: '8px',
+              background: '#E5E7EB',
+              borderRadius: '4px',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: `${progress}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, #3B82F6 0%, #2563EB 100%)',
+                transition: 'width 0.3s ease',
+                borderRadius: '4px'
+              }} />
+            </div>
+
+            <p style={{
+              fontSize: '13px',
+              color: '#9CA3AF',
+              marginTop: '8px',
+              marginBottom: 0
+            }}>
+              Please wait while we fetch vehicle information...
+            </p>
+          </div>
+        )}
 
         {execResult && (
           <div style={{ marginTop: '20px' }}>
