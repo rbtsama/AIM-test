@@ -1,0 +1,64 @@
+import { json, type ActionFunctionArgs } from "@remix-run/node";
+
+/**
+ * N8N Webhook Proxy
+ * 代理前端到 n8n Webhook 的请求
+ */
+export async function action({ request }: ActionFunctionArgs) {
+  try {
+    const { workflowType, data } = await request.json();
+
+    // 根据工作流类型选择对应的 Webhook URL
+    const webhookMap: Record<string, string | undefined> = {
+      factsheet: process.env.N8N_WEBHOOK_FACTSHEET,
+    };
+
+    const webhookBaseUrl = webhookMap[workflowType];
+
+    if (!webhookBaseUrl) {
+      return json(
+        { success: false, error: `Invalid workflow type: ${workflowType}` },
+        { status: 400 }
+      );
+    }
+
+    // 构建完整的 Webhook URL（VIN 作为路径参数）
+    const vin = data.vin || '';
+    const webhookUrl = `${webhookBaseUrl}${vin}`;
+
+    console.log(`[N8N Webhook] Calling: ${workflowType}`);
+    console.log(`[N8N Webhook] URL: ${webhookUrl}`);
+    console.log(`[N8N Webhook] Data:`, JSON.stringify(data));
+
+    const response = await fetch(webhookUrl, {
+      method: "GET", // Webhook 通常使用 GET，VIN 在 URL 中
+      headers: {
+        "Accept": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[N8N Webhook] Error:", errorText);
+      return json(
+        { success: false, error: `HTTP ${response.status}`, details: errorText },
+        { status: response.status }
+      );
+    }
+
+    const result = await response.json();
+    console.log("[N8N Webhook] Success:", JSON.stringify(result).substring(0, 200));
+
+    return json({
+      success: true,
+      data: result,
+    });
+
+  } catch (error) {
+    console.error("[N8N Webhook] Exception:", error);
+    return json(
+      { success: false, error: "Request failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
+}
