@@ -15,7 +15,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-N8N-API-KEY': '', // Will be set via Cloudflare environment variables
+        'N8N_API_KEY': '', // Will be set via Cloudflare environment variables
       },
       body: JSON.stringify({ active: true }),
     });

@@ -39,7 +39,7 @@ export async function loader() {
     const response = await fetch(testUrl, {
       method: "GET",
       headers: {
-        "X-N8N-API-KEY": apiKey,
+        "N8N_API_KEY": apiKey,
         "Accept": "application/json",
       },
     });
