@@ -2,37 +2,54 @@
 
 A Remix app that generates vehicle factsheets from VIN numbers using n8n workflows, deployed on Cloudflare Pages.
 
-## Setup for Cloudflare Pages
+## Project Structure
 
-1. **Install dependencies:**
+The project is organized with all source code in the `factsheet/` directory:
+
+```
+factsheet/
+├── app/                 # Remix application code
+├── functions/           # Cloudflare Pages Functions
+├── public/              # Static assets
+├── package.json         # Dependencies and scripts
+├── vite.config.ts       # Vite configuration
+├── tsconfig.json        # TypeScript configuration
+└── remix.config.js      # Remix configuration
+```
+
+## Cloudflare Pages Deployment
+
+**Settings:**
+- **Root directory**: `factsheet`
+- **Build command**: `npm run build`
+- **Build output directory**: `build/client`
+- **Node.js version**: `22.x`
+
+## Local Development
+
+1. **Navigate to the factsheet directory:**
+   ```bash
+   cd factsheet
+   ```
+
+2. **Install dependencies:**
    ```bash
    npm install
    ```
 
-2. **Build the app:**
+3. **Start development server:**
+   ```bash
+   npm run dev
+   ```
+
+4. **Build for production (optional):**
    ```bash
    npm run build
    ```
 
-3. **Deploy to Cloudflare Pages:**
-   - Connect your GitHub repository to Cloudflare Pages
-   - Set build command: `npm run build`
-   - Set build output directory: `build/client`
-   - Set Node.js version: `22.x`
+## Features
 
-4. **Environment Variables (if needed):**
-   - Set any required environment variables in Cloudflare Pages dashboard
-
-## Local Development
-
-```bash
-npm run dev
-```
-
-## Key Changes for Cloudflare Pages
-
-- Updated all imports from `@remix-run/node` to `@remix-run/cloudflare`
-- Added Cloudflare Pages adapter
-- Created `functions/_middleware.ts` for server-side rendering
-- Added `wrangler.toml` configuration
-- Updated build configuration for Cloudflare Workers runtime
+- VIN validation and lookup
+- N8N workflow integration
+- Real-time progress tracking
+- Cloudflare Pages deployment ready
