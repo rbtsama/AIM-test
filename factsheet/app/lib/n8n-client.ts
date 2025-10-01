@@ -29,7 +29,11 @@ export async function executeN8NWorkflow(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
+      cache: 'no-store', // 浏览器级别禁用缓存
       body: JSON.stringify({
         workflowType,
         data,
@@ -37,9 +41,22 @@ export async function executeN8NWorkflow(
     });
 
     if (!response.ok) {
+      // 尝试解析错误详情
+      const errorData = await response.json().catch(() => ({}));
+
+      // 特殊处理 404 webhook 未激活错误
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: '⚠️ N8N Workflow Not Active',
+          details: errorData.details || 'The n8n webhook is not registered. Please activate the workflow in n8n by clicking "Execute Workflow" button.',
+        };
+      }
+
       return {
         success: false,
         error: `HTTP ${response.status}: ${response.statusText}`,
+        details: errorData.details || errorData.error,
       };
     }
 
@@ -47,8 +64,8 @@ export async function executeN8NWorkflow(
   } catch (error) {
     return {
       success: false,
-      error: '网络请求失败',
-      details: error instanceof Error ? error.message : '未知错误',
+      error: 'Network request failed',
+      details: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }

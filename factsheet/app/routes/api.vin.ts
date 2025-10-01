@@ -1,17 +1,17 @@
-import { json, type LoaderFunctionArgs } from '@remix-run/node';
+import { type LoaderFunctionArgs } from '@remix-run/cloudflare';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const vin = url.searchParams.get('vin');
 
   if (!vin) {
-    return json({ error: 'VIN参数缺失' }, { status: 400 });
+    return Response.json({ error: 'VIN参数缺失' }, { status: 400 });
   }
 
   // VIN格式验证：17位字母数字组合
   const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/i;
   if (!vinRegex.test(vin)) {
-    return json({ error: 'VIN格式无效，应为17位字母数字组合' }, { status: 400 });
+    return Response.json({ error: 'VIN格式无效，应为17位字母数字组合' }, { status: 400 });
   }
 
   try {
@@ -44,7 +44,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const data = await response.json();
     console.log(`VIN查询成功: ${vin}`);
 
-    return json({
+    return Response.json({
       success: true,
       data,
       vin,
@@ -55,13 +55,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.error(`VIN查询失败: ${vin}`, error);
 
     if (error instanceof Error && error.name === 'AbortError') {
-      return json({
+      return Response.json({
         error: '查询超时，请稍后重试',
         details: '请求超过45秒未响应'
       }, { status: 408 });
     }
 
-    return json({
+    return Response.json({
       error: '查询失败',
       details: error instanceof Error ? error.message : '未知错误',
       vin
