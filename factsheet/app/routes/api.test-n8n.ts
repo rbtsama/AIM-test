@@ -6,7 +6,7 @@ import { json } from "@remix-run/cloudflare";
  */
 export async function loader() {
   try {
-    const apiKey = ""; // Will be set via Cloudflare environment variables
+    const apiKey = process.env.N8N_API_KEY; // Will be set via Cloudflare environment variables
     const baseUrl = "https://autoironman.app.n8n.cloud";
     const workflowId = "49Lzl72NFRBeepTx";
 
