@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { generateFactsheet } from '../lib/n8n-client';
-import type { MetaFunction } from '@remix-run/node';
+import type { MetaFunction } from '@remix-run/cloudflare';
 
 export const meta: MetaFunction = () => {
   return [

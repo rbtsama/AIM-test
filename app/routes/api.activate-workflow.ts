@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from '@remix-run/node';
+import { json, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
@@ -15,7 +15,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-N8N-API-KEY': process.env.N8N_API_KEY || '',
+        'X-N8N-API-KEY': '', // Will be set via Cloudflare environment variables
       },
       body: JSON.stringify({ active: true }),
     });

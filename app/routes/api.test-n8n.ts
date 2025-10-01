@@ -1,4 +1,4 @@
-import { json } from "@remix-run/node";
+import { json } from "@remix-run/cloudflare";
 
 /**
  * 测试 n8n 连接
@@ -6,9 +6,9 @@ import { json } from "@remix-run/node";
  */
 export async function loader() {
   try {
-    const apiKey = process.env.N8N_API_KEY;
-    const baseUrl = process.env.N8N_BASE_URL?.replace(/\/$/, '');
-    const workflowId = process.env.N8N_WORKFLOW_FACTSHEET;
+    const apiKey = ""; // Will be set via Cloudflare environment variables
+    const baseUrl = "https://autoironman.app.n8n.cloud";
+    const workflowId = "49Lzl72NFRBeepTx";
 
     // 检查环境变量
     if (!apiKey) {

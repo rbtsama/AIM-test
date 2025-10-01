@@ -1,6 +1,9 @@
 import { vitePlugin as remix } from "@remix-run/dev";
 import { defineConfig } from "vite";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [
@@ -19,5 +22,10 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+  },
+  ssr: {
+    resolve: {
+      conditions: ["workerd", "worker", "browser"],
+    },
   },
 });

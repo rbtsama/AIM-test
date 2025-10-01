@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from "@remix-run/node";
+import { json, type ActionFunctionArgs } from "@remix-run/cloudflare";
 
 /**
  * N8N Webhook Proxy
@@ -10,7 +10,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // 根据工作流类型选择对应的 Webhook URL
     const webhookMap: Record<string, string | undefined> = {
-      factsheet: process.env.N8N_WEBHOOK_FACTSHEET,
+      factsheet: "https://autoironman.app.n8n.cloud/webhook-test/329e0b33-3c4b-4b2d-b7d4-827574743150/vin/",
     };
 
     const webhookBaseUrl = webhookMap[workflowType];
