@@ -34,5 +34,7 @@ export default defineConfig({
       conditions: ["workerd", "worker", "browser"],
     },
   },
-  envPrefix: ['VITE_', 'N8N_'],
+  // Vite 会自动加载 .env 文件，这里配置哪些环境变量可以暴露给客户端
+  // N8N_ 开头的变量仅在服务器端使用，不会暴露给浏览器
+  envPrefix: ['VITE_'],
 });
