@@ -1,103 +1,127 @@
-import { json, type LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { type LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { getN8NConfig } from '../lib/env.server';
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ context }: LoaderFunctionArgs) {
   try {
-    const workflowId = '49Lzl72NFRBeepTx'; // 你的workflow ID
+    // 优先使用 Cloudflare env，本地开发使用 .env 文件
+    const env = (context.cloudflare as any)?.env || {};
+    const config = getN8NConfig();
 
-    // 方法1: 尝试通过n8n公共API激活工作流
-    const activateUrl = `https://autoironman.app.n8n.cloud/api/v1/workflows/${workflowId}/activate`;
+    const workflowId = env.N8N_WORKFLOW_FACTSHEET || config.workflowFactsheet;
+    const apiKey = env.N8N_API_KEY || config.apiKey;
+    const baseUrl = env.N8N_BASE_URL || config.baseUrl;
 
-    console.log(`尝试激活workflow: ${activateUrl}`);
-
-    // 尝试激活工作流
-    const activateResponse = await fetch(activateUrl, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'N8N_API_KEY': process.env.N8N_API_KEY, // Will be set via Cloudflare environment variables
-      },
-      body: JSON.stringify({ active: true }),
+    console.log(`🔑 N8N Config:`, {
+      baseUrl,
+      workflowId,
+      hasApiKey: !!apiKey,
+      apiKeyPrefix: apiKey ? apiKey.substring(0, 20) + '...' : 'MISSING'
     });
 
-    if (activateResponse.ok) {
-      console.log('工作流激活成功');
-      return json({ success: true, message: '工作流已激活', method: 'public-api' });
+    if (!apiKey) {
+      return Response.json({
+        success: false,
+        error: '❌ N8N_API_KEY not configured',
+        details: 'Please set N8N_API_KEY in .env file or Cloudflare environment variables'
+      }, { status: 500 });
     }
 
-    // 方法2: 尝试直接执行工作流（这会同时激活webhook）
-    const executeUrl = `https://autoironman.app.n8n.cloud/api/v1/workflows/${workflowId}/run`;
+    // 步骤1: 先获取当前 workflow 配置
+    const getUrl = `${baseUrl}/api/v1/workflows/${workflowId}`;
+    console.log(`📥 获取 workflow 配置: ${getUrl}`);
 
-    console.log(`尝试执行workflow: ${executeUrl}`);
-
-    const executeResponse = await fetch(executeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        // 可以传入执行参数
-      }),
-    });
-
-    if (executeResponse.ok) {
-      console.log('工作流执行成功');
-      return json({ success: true, message: '工作流已执行并激活', method: 'execute-api' });
-    }
-
-    // 方法3: 尝试私有API端点（n8n界面使用的）
-    const privateExecuteUrl = `https://autoironman.app.n8n.cloud/rest/workflows/${workflowId}/run`;
-
-    console.log(`尝试私有API执行: ${privateExecuteUrl}`);
-
-    const privateResponse = await fetch(privateExecuteUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    });
-
-    if (privateResponse.ok) {
-      console.log('通过私有API执行成功');
-      return json({ success: true, message: '工作流已通过私有API激活', method: 'private-api' });
-    }
-
-    // 方法4: 尝试直接触发webhook来"唤醒"工作流
-    const webhookUrl = 'https://autoironman.app.n8n.cloud/webhook-test/329e0b33-3c4b-4b2d-b7d4-827574743150/vin/TEST12345';
-
-    console.log(`尝试触发webhook: ${webhookUrl}`);
-
-    const webhookResponse = await fetch(webhookUrl, {
+    const getResponse = await fetch(getUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        'X-N8N-API-KEY': apiKey,
       },
     });
 
-    // 即使webhook返回错误，但可能已经激活了工作流
-    console.log(`Webhook响应状态: ${webhookResponse.status}`);
+    if (!getResponse.ok) {
+      const errorText = await getResponse.text();
+      console.error('❌ 获取 workflow 失败:', errorText);
+      return Response.json({
+        success: false,
+        error: `Failed to get workflow: ${getResponse.status}`,
+        details: errorText
+      }, { status: getResponse.status });
+    }
 
-    return json({
-      success: webhookResponse.status !== 404,
-      message: webhookResponse.status === 404
-        ? '工作流仍未激活，请手动在n8n界面执行一次'
-        : '工作流可能已通过webhook触发激活',
-      method: 'webhook-trigger',
-      status: webhookResponse.status,
-      attempts: {
-        publicApi: activateResponse.status,
-        executeApi: executeResponse.status,
-        privateApi: privateResponse.status,
-        webhookTrigger: webhookResponse.status,
-      }
+    const workflow = await getResponse.json();
+    console.log(`📋 当前 workflow 状态: active=${workflow.active}`);
+
+    // 如果已经激活，直接返回成功
+    if (workflow.active === true) {
+      console.log('✅ Workflow 已经处于激活状态');
+      return Response.json({
+        success: true,
+        message: '✅ Workflow is already active',
+        data: { id: workflow.id, name: workflow.name, active: workflow.active }
+      });
+    }
+
+    // 步骤2: 使用 PUT 更新 workflow 为激活状态
+    const updateUrl = `${baseUrl}/api/v1/workflows/${workflowId}`;
+    console.log(`🚀 激活 workflow (PUT): ${updateUrl}`);
+
+    const updateResponse = await fetch(updateUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-N8N-API-KEY': apiKey,
+      },
+      body: JSON.stringify({
+        ...workflow,
+        active: true,
+      }),
     });
+
+    console.log(`📡 更新响应状态: ${updateResponse.status}`);
+
+    if (updateResponse.ok) {
+      const result = await updateResponse.json();
+      console.log('✅ 工作流激活成功:', result);
+      return Response.json({
+        success: true,
+        message: '✅ Workflow activated successfully',
+        method: 'n8n-api-put',
+        data: { id: result.id, name: result.name, active: result.active }
+      });
+    }
+
+    // 激活失败，返回详细错误信息
+    const errorText = await updateResponse.text();
+    let errorData: any = {};
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      errorData = { message: errorText };
+    }
+
+    console.error('❌ 工作流激活失败:', {
+      status: updateResponse.status,
+      statusText: updateResponse.statusText,
+      error: errorData
+    });
+
+    return Response.json({
+      success: false,
+      error: `Failed to activate workflow: ${updateResponse.status} ${updateResponse.statusText}`,
+      details: errorData.message || errorText,
+      debugInfo: {
+        url: updateUrl,
+        status: updateResponse.status,
+        workflowId,
+        hasApiKey: !!apiKey
+      }
+    }, { status: updateResponse.status });
 
   } catch (error) {
     console.error('激活工作流失败:', error);
 
-    return json({
+    return Response.json({
       success: false,
       error: '激活工作流时发生错误',
       details: error instanceof Error ? error.message : '未知错误',

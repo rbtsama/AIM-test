@@ -22,10 +22,17 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    // 禁用浏览器缓存，确保总是加载最新代码
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
   },
   ssr: {
     resolve: {
       conditions: ["workerd", "worker", "browser"],
     },
   },
+  envPrefix: ['VITE_', 'N8N_'],
 });
